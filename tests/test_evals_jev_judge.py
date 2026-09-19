@@ -371,6 +371,13 @@ class TestJevEvaluateRun(unittest.IsolatedAsyncioTestCase):
 
 
 class TestJevConfig(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        # A judge built from a config makes its own client; give it a mock one, so
+        # these tests reach no network and need no HTTP/2 support installed.
+        patcher = patch.object(JevEvalJudge, "_new_client", lambda judge: _FakeApi([]).client())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     async def test_service_typesafe_builds_a_jev_judge_with_the_default_explainer(self):
         with patch.dict(os.environ, {"TYPESAFE_API_KEY": "k"}):
             judge = judge_from_config({"service": "typesafe"})
