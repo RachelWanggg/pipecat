@@ -6,6 +6,7 @@
 
 import json
 import os
+import sys
 import unittest
 from collections.abc import Callable
 from unittest.mock import patch
@@ -439,6 +440,11 @@ class TestJevConnection(unittest.IsolatedAsyncioTestCase):
     async def _ask(self, judge: JevEvalJudge):
         judge.add_assistant_message("It rains.")
         return await judge.evaluate("mentions weather")
+
+    def test_missing_http2_support_names_the_extra(self):
+        with patch.dict(sys.modules, {"h2": None}):
+            with self.assertRaisesRegex(ImportError, r"pipecat-ai\[evals\]"):
+                JevEvalJudge(api_key="k")
 
     async def test_a_timeout_is_retried_once(self):
         judge, api = _judge([_timeout(), _ok({"verdict": _choice("yes")})])

@@ -234,6 +234,8 @@ class JevEvalJudge(BaseEvalJudge):
 
         Raises:
             ValueError: If there is no API key.
+            ImportError: If the judge makes its own client and HTTP/2 support
+                (the ``evals`` extra) isn't installed.
         """
         super().__init__(allow_continue=allow_continue)
         api_key = api_key or os.environ.get("TYPESAFE_API_KEY")
@@ -454,12 +456,21 @@ class JevEvalJudge(BaseEvalJudge):
             await self._client.aclose()
 
     def _new_client(self) -> httpx2.AsyncClient:
-        """An HTTP/2 client that keeps its connection open between questions."""
-        return httpx2.AsyncClient(
-            http2=True,
-            timeout=httpx2.Timeout(self._timeout),
-            limits=httpx2.Limits(keepalive_expiry=_KEEPALIVE_S),
-        )
+        """An HTTP/2 client that keeps its connection open between questions.
+
+        Raises:
+            ImportError: If HTTP/2 support (the ``evals`` extra) isn't installed.
+        """
+        try:
+            return httpx2.AsyncClient(
+                http2=True,
+                timeout=httpx2.Timeout(self._timeout),
+                limits=httpx2.Limits(keepalive_expiry=_KEEPALIVE_S),
+            )
+        except ImportError as e:
+            raise ImportError(
+                'The Jev judge needs HTTP/2 support: `uv add "pipecat-ai[evals]"`.'
+            ) from e
 
     async def _warm(self) -> None:
         """Open the connection with a request that costs no inference."""
